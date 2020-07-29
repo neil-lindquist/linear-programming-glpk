@@ -4,6 +4,7 @@
 (in-package :linear-programming-glpk)
 
 (define-foreign-library libglpk
+  (:windows (:or "glpk" "glpk_4_65"))
   (t (:default "libglpk")))
 
 (use-foreign-library libglpk)
