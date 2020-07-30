@@ -17,6 +17,11 @@
   (:min 1)
   (:max 2))
 
+(defcenum variable-type
+  (:continuous 1)
+  (:integer    2)
+  (:binary     3))
+
 ;; type of auxiliary/structural variable
 (defcenum variable-type
   (:free 1)           ;; /* free variable */
@@ -55,8 +60,10 @@
   :optimal)
 
 (defcenum structural-variable-kind
-  (:continuous 160)
-  :integer)
+  (:continuous 1)
+  (:integer    2)
+  (:binary     3))
+
 
 (defcenum integer-solution-status
   (:undefined 170)
@@ -550,19 +557,6 @@ void lpx_get_col_info(LPX *lp, int j, int *tagx, double *vx,
   (problem :pointer)
   (index :int))
 ;;/* retrieve column dual value (interior point) */
-
-;; TODO: Figure out what values for class are valid.
-(defcfun ("glp_set_class" %set-class)
-    :void
-  (problem :pointer)
-  (class :int))
-;;/* set (change) problem class */
-
-;; TODO: See ..._set_class
-(defcfun ("glp_get_class" %get-class)
-    :int
-  (problem :pointer))
-;;/* retrieve problem class */
 
 (defcfun ("glp_set_col_kind" %set-col-kind)
     :void
