@@ -161,7 +161,7 @@ typedef struct
   (clique-cuts enablep)
   (presolve enablep)
   (binarize enablep)
-  (feasibility-pump-heuristic :int)
+  (feasibility-pump-heuristic enablep)
   (proxy-search-heuristic :int)
   (proxy-time-limit :int)
   (simple-rounding-heuristic :int)
@@ -557,18 +557,18 @@ glp_cpxcp;
 (defcfun ("glp_simplex" %simplex)
     solver-exit-code
   (problem :pointer)
-  (params :pointer))
+  (params simplex-control-parameters))
 ;;/* solve LP problem with the simplex method */
 
 (defcfun ("glp_exact" %exact)
     solver-exit-code
   (problem :pointer)
-  (params :pointer))
+  (params simplex-control-parameters))
 ;;/* easy-to-use driver to the exact simplex method */
 
 (defcfun("glp_init_smcp" %init-smcp)
   :void
-  (paramters :pointer))
+  (paramters simplex-control-parameters))
 ;;/* initialize simplex method control parameters */
 
 (defcfun ("glp_get_status" %get-status)
@@ -707,12 +707,12 @@ glp_cpxcp;
 (defcfun ("glp_intopt" %intopt)
     solver-exit-code
   (problem :pointer)
-  (parameters :pointer))
+  (parameters integer-control-parameters))
 ;;/* easy-to-use driver to the branch-and-bound method */
 
 (defcfun ("glp_init_iocp" %init-iocp)
   :void
-  (parameters :pointer))
+  (parameters integer-control-parameters))
 ;;/* initialize integer optimizer control parameters */
 
 (defcfun ("glp_mip_status" %mip-status)
