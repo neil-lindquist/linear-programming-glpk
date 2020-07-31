@@ -89,6 +89,9 @@ typedef struct
   (:harris-2-pass #x22)
   (:flip-flop #x33))
 
+(defcenum enablep
+  (:on 1)
+  (:off 0))
 
 (defcstruct simplex-control-parameters
   (message-level message-level)
@@ -173,10 +176,6 @@ typedef struct
 {...} glp_attr;
 |#
 
-(defcenum enablep
-  (:on 1)
-  (:off 0))
-
 (defcenum reason-codes
   (:request-row-gen 1)
   (:better-int-sol 2)
@@ -192,6 +191,7 @@ typedef struct
   (:up-branch 2))
 
 (defcenum solver-exit-code
+  (:success #x0)
   (:invalid-basis #x1)
   (:singular-matrix #x2)
   (:ill-conditioned-matrix #x3)
@@ -572,7 +572,7 @@ glp_cpxcp;
 ;;/* initialize simplex method control parameters */
 
 (defcfun ("glp_get_status" %get-status)
-    lpx-status
+    solution-status
   (problem :pointer))
 ;;/* retrieve generic status of basic solution */
 
