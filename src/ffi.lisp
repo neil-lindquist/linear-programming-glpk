@@ -1,4 +1,4 @@
-;; Code heavily based off https://github.com/sellout/cl-glpk
+;; Code heavily based off https://github.com/sellout/cl-glpk and https://github.com/phikal/cl-glpk-1
 ;; Used under the GPL 3.0 and BSD sans advertising licenses
 
 (in-package :linear-programming-glpk)
@@ -9,13 +9,17 @@
 
 (use-foreign-library libglpk)
 
-(defcenum problem-class
-  (:lp 100)      ;; linear programming
-  (:mip 101))    ;; mixed integer programming
+
+;; Interface based off glpk.h version 4.65
 
 (defcenum optimization-direction-flag
   (:min 1)
   (:max 2))
+
+(defcenum structural-variable-kind
+  (:continuous 1)
+  (:integer    2)
+  (:binary     3))
 
 (defcenum variable-type
   (:continuous 1)
@@ -24,17 +28,34 @@
 
 ;; type of auxiliary/structural variable
 (defcenum variable-type
-  (:free 1)           ;; /* free variable */
-  (:lower-bound 2)    ;; /* variable with lower bound */
+  (:free 1)         ;; /* free variable */
+  (:lower-bound 2)  ;; /* variable with lower bound */
   (:upper-bound 3)  ;; /* variable with upper bound */
-  (:double-bound 4)  ;; /* double-bounded variable */
-  (:fixed 5))    ;; /* fixed variable */
+  (:double-bound 4) ;; /* double-bounded variable */
+  (:fixed 5))       ;; /* fixed variable */
 
-(defcenum basis-status
-  (:undefined 130)
-  (:valid 131))
+(defcenum variable-status
+ (:basic 1)
+ :non-basic-on-lower-bound
+ :non-basic-on-upper-bound
+ :non-basic-free
+ :non-basic-fixed)
 
-(defcenum primal-basic-solution-status
+#| TODO Bit flags, not enum
+(defcenum scaling-type
+ (:geometric-mean #x1)
+ (:equilibration #x10)
+ (:power-of-two #x20)
+ (:skip-if-well-scaled #x40)
+ (:auto #x80))
+|#
+
+(defcenum solution-type
+  (:basic 1)
+  (:interior-point 2)
+  (:integer 3))
+
+(defcenum solution-status
   (:undefined 1)
   :feasible
   :infeasible
@@ -42,99 +63,187 @@
   :optimal
   :unbounded)
 
-(defcenum dual-basic-solution-status
-  (:undefined 136)
-  :feasible
-  :infeasible
-  :no-feasible-solution-exists)
+#| TODO struct
+typedef struct
+{...} glp_bfcp;
+|#
 
-(defcenum variable-status
-  (:basic 1)
-  :non-basic-on-lower-bound
-  :non-basic-on-upper-bound
-  :non-basic-free
-  :non-basic-fixed)
+(defcenum message-level
+  (:off 0)
+  (:error 1)
+  (:on 2)
+  (:all 3)
+  (:debug 4))
 
-(defcenum interior-point-solution-status
-  (:undefined 150)
-  :optimal)
+(defcenum simplex-method
+  (:primal 1)
+  (:dual-primal 2)
+  (:dual 3))
 
-(defcenum structural-variable-kind
-  (:continuous 1)
-  (:integer    2)
-  (:binary     3))
+(defcenum simplex-pricing
+  (:standard #x11)
+  (:projected-steepest-edge #x22))
+
+(defcenum ratio-test
+  (:standard #x11)
+  (:harris-2-pass #x22)
+  (:flip-flop #x33))
 
 
-(defcenum integer-solution-status
-  (:undefined 170)
-  :optimal
-  :feasible
-  :no-integer-solution-exists)
+(defcstruct simplex-control-parameters
+  (message-level message-level)
+  (method simplex-method)
+  (pricing simplex-pricing)
+  (ratio-test ratio-test)
+  (primal-feasibility-tol :double)
+  (dual-feasibility-tol :double)
+  (pivot-tol :double)
+  (lower-obj-limit :double)
+  (upper-obj-limit :double)
+  (iteration-limit :int)
+  (time-limit :int)
+  (display-out-freq :int)
+  (display-out-delay :int)
+  (enable-presolver enablep)
+  (exclude-fixed-vars :int)
+  (shift-var-bounds :int)
+  (a-or-n :int) ;; GLP_USE_AT = 1; GLP_USE_NT = 2
+  (unused :double :count 33))
 
-(defcenum lpx-status
-  (:optimal 0)
-  :feasible
-  :infeasible
-  :no-feasible
-  :unbounded
-  :undefined)
+(defcenum ordering-algorithm
+  (:none 0)
+  (:quotient-min-degree 1)
+  (:approx-min-degree 2)
+  (:symmetric-approx-min-degree 3))
+
+(defcstruct interior-point-control-parameters
+  (message-level message-level)
+  (ordering-algorithm ordering-algorithm)
+  (unused :double :count 48))
+
+(defcenum branching-technique
+  (:first-fractional-variable 1)
+  (:last-fractional-variable 2)
+  (:most-fractional-variable 3)
+  (:driebeck-tomlin 4)
+  (:hybrid-pseudocost 5))
+
+(defcenum backtracking-technique
+  (:depth-first 1)
+  (:breadth-first 2)
+  (:best-local-bound 3)
+  (:best-projection-heuristic 4))
+
+(defcenum preprocessing-technique
+  (:none 0)
+  (:root-level 1)
+  (:all-levels 2))
+
+(defcstruct integer-control-parameters
+  (message-level message-level)
+  (branching-technique branching-technique)
+  (backtracking-technique backtracking-technique)
+  (integer-tolerance :double)
+  (objective-tolerance :double)
+  (time-limit :int)
+  (display-out-freq :int)
+  (display-out-delay :int)
+  (cb-function :pointer)
+  (cb-info :pointer)
+  (preprocessing-technique preprocessing-technique)
+  (relative-mip-gap-tol :double)
+  (mir-cuts enablep)
+  (gomory-cuts enablep)
+  (cover-cuts enablep)
+  (clique-cuts enablep)
+  (presolve enablep)
+  (binarize enablep)
+  (feasibility-pump-heuristic :int)
+  (proxy-search-heuristic :int)
+  (proxy-time-limit :int)
+  (simple-rounding-heuristic :int)
+  (use-sol :int)
+  (save-sol :string)
+  (alien :int)
+  (flip :int)
+  (unused :double :count 23))
+
+#| TODO struct
+typedef struct
+{...} glp_attr;
+|#
+
+(defcenum enablep
+  (:on 1)
+  (:off 0))
+
+(defcenum reason-codes
+  (:request-row-gen 1)
+  (:better-int-sol 2)
+  (:request-heuristic 3)
+  (:request-cut-gen 4)
+  (:request-branching 5)
+  (:request-subproblem 6)
+  (:request-preprocessing 7))
+
+(defcenum branch-selection
+  (:no-branch 0)
+  (:down-branch 1)
+  (:up-branch 2))
 
 (defcenum solver-exit-code
-  (:ok 0)
-  :empty
-  :bad-basis
-  :infeasible
-  :fault
-  :objective-lower-limit-reached
-  :objective-upper-limit-reached
-  :iteration-limit-exhausted
-  :time-limit-exhausted
-  :no-feasible-solution
-  :numerical-instability
-  :sing
-  :no-convergence
-  :no-primal-feasible-solution
-  :no-dual-feasible-solution)
+  (:invalid-basis #x1)
+  (:singular-matrix #x2)
+  (:ill-conditioned-matrix #x3)
+  (:invalid-bounds #x4)
+  (:solver-failed #x5)
+  (:objective-lower-limit #x6)
+  (:objective-upper-limit #x7)
+  (:iteration-limit #x8)
+  (:timie-limit #x9)
+  (:no-primal-feasible-sol #xA)
+  (:no-dual-feasible-sol #xB)
+  (:no-root-lp-optimum #xC)
+  (:search-terminated #xD)
+  (:rel-min-gap-tol #xE)
+  (:no-primal/duel-feasible-solution #xF)
+  (:no-convergence #x10)
+  (:instability #x11)
+  (:invalid-data #x12)
+  (:result-out-of-range #x13))
 
+(defcenum kkt-condition
+  (:primal-equalities 1)
+  (:primal-bounds 2)
+  (:dual-equalities 3)
+  (:dual-bounds 4)
+  (:complementary-slackness 5))
 
-;; todo: lispify names; in particular, use longer names
-(defcenum control-parameter
-  (:msglev 300) ;; /* lp->msg_lev */
-  (:scale 301)  ;; /* lp->scale */
-  (:dual 302)  ;; /* lp->dual */
-  (:price 303)  ;; /* lp->price */
-  (:relax 304)  ;; /* lp->relax */
-  (:tolbnd 305) ;; /* lp->tol_bnd */
-  (:toldj 306)  ;; /* lp->tol_dj */
-  (:tolpiv 307) ;; /* lp->tol_piv */
-  (:round 308)  ;; /* lp->round */
-  (:objll 309)  ;; /* lp->obj_ll */
-  (:objul 310)  ;; /* lp->obj_ul */
-  (:itlim 311)  ;; /* lp->it_lim */
-  (:itcnt 312)  ;; /* lp->it_cnt */
-  (:tmlim 313)  ;; /* lp->tm_lim */
-  (:outfrq 314) ;; /* lp->out_frq */
-  (:outdly 315) ;; /* lp->out_dly */
-  (:branch 316) ;; /* lp->branch */
-  (:btrack 317) ;; /* lp->btrack */
-  (:tolint 318) ;; /* lp->tol_int */
-  (:tolobj 319) ;; /* lp->tol_obj */
-  (:mpsinfo 320) ;; /* lp->mps_info */
-  (:mpsobj 321)   ;; /* lp->mps_obj */
-  (:mpsorig 322) ;; /* lp->mps_orig */
-  (:mpswide 323) ;; /* lp->mps_wide */
-  (:mpsfree 324) ;; /* lp->mps_free */
-  (:mpsskip 325) ;; /* lp->mps_skip */
-  (:lptorig 326) ;; /* lp->lpt_orig */
-  (:presol 327)   ;; /* lp->presol */
-  (:binarize 328) ;; /* lp->binarize */
-  (:usecuts 329)) ;; /* lp->use_cuts */
+#| Skipping I/O code
+/* MPS file format: */
+#define GLP_MPS_DECK       1  /* fixed (ancient) */
+#define GLP_MPS_FILE       2  /* free (modern) */
 
-(defcenum cut-types
-  (:cover     3)  ;/* mixed cover cuts */
-  (:clique    4)  ;/* clique cuts */
-  (:gomory    1)  ;/* Gomory's mixed integer cuts */
-  (:all       0)) ; /* all cuts */
+typedef struct
+{     /* MPS format control parameters */
+      int blank;
+      /* character code to replace blanks in symbolic names */
+      char *obj_name;
+      /* objective row name */
+      double tol_mps;
+      /* zero tolerance for MPS data */
+      double foo_bar[17];
+      /* (reserved for use in the future) */}
+glp_mpscp;
+
+typedef struct
+{     /* CPLEX LP format control parameters */
+      double foo_bar[20];
+      /* (reserved for use in the future) */}
+glp_cpxcp;
+|#
+
+;; Line 306
 
 (defcfun ("glp_create_prob" %create-prob) :pointer)
 ;; /* create problem object */
@@ -231,11 +340,24 @@
     :void
   (problem :pointer)
   (number-of-entries :int)
-  (rows :pointer)
-  (columns :pointer)
-  (values :pointer))
-;; void lpx_load_matrix(LPX *lp, int ne, int ia[], int ja[], double ar[]);
+  (rows :pointer)  ;; int array
+  (cols :pointer)  ;; int array
+  (vals :pointer)) ;; double array
 ;; /* load (replace) the whole constraint matrix */
+
+(defcfun ("glp_check_dep" %check-dep)
+  :int
+  (m :int)
+  (n :int)
+  (ne :int)
+  (rows :pointer)  ;; int array
+  (cols :pointer)) ;; double array
+;;/* check for duplicate elements in sparse matrix */
+
+(defcfun ("glp_sort_matrix" %sort-matrix)
+  :void
+  (problem :pointer))
+;; /* sort elements of the constraint matrix */
 
 (defcfun ("glp_del_rows" %del-rows)
     :void
@@ -250,6 +372,14 @@
   (number-of-columns :int)
   (columns :pointer))
 ;; /* delete specified columns from problem object */
+
+;; TODO unused
+;;void glp_copy_prob(glp_prob *dest, glp_prob *prob, int names);
+;;/* copy problem object content */
+
+;; TODO unused
+;;void glp_erase_prob(glp_prob *P);
+;;/* erase problem object content */
 
 (defcfun ("glp_delete_prob" %delete-prob)
     :void
@@ -311,13 +441,6 @@
   (index :int))
 ;;/* retrieve row upper bound */
 
-#|
-(defcfun ("glp_get_row_bnds" %get-row-bnds))   /* obsolete */
-void lpx_get_row_bnds(LPX *lp, int i, int *typx, double *lb,
-                      double *ub);
-/* obtain row bounds */
-|#
-
 (defcfun ("glp_get_col_type" %get-col-type)
     variable-type
   (problem :pointer)
@@ -335,13 +458,6 @@ void lpx_get_row_bnds(LPX *lp, int i, int *typx, double *lb,
   (problem :pointer)
   (index :int))
 ;;/* retrieve column upper bound */
-
-#|
-(defcfun ("glp_get_col_bnds" %get-col-bnds))   /* obsolete */
-void lpx_get_col_bnds(LPX *lp, int j, int *typx, double *lb,
-                      double *ub);
-/* obtain column bounds */
-|#
 
 (defcfun ("glp_get_obj_coef" %get-obj-coef)
     :double
@@ -388,6 +504,17 @@ void lpx_get_col_bnds(LPX *lp, int j, int *typx, double *lb,
     :void
   (problem :pointer))
 
+
+;; TODO unused
+;;void glp_set_rii(glp_prob *P, int i, double rii);
+;;/* set (change) row scale factor */
+;;void glp_set_sjj(glp_prob *P, int j, double sjj);
+;;/* set (change) column scale factor */
+;;double glp_get_rii(glp_prob *P, int i);
+;;/* retrieve row scale factor */
+;;double glp_get_sjj(glp_prob *P, int j);
+;;/* retrieve column scale factor */
+
 (defcfun ("glp_scale_prob" %scale-prob)
     :void
   (problem :pointer))
@@ -397,6 +524,20 @@ void lpx_get_col_bnds(LPX *lp, int j, int *typx, double *lb,
     :void
   (problem :pointer))
 ;;/* unscale problem data */
+
+(defcfun ("glp_set_row_stat" %set-row-stat)
+    :void
+  (problem :pointer)
+  (index :int)
+  (status variable-status))
+;;/* set (change) row status */
+
+(defcfun ("glp_set_col_stat" %set-col-stat)
+    :void
+  (problem :pointer)
+  (index :int)
+  (status variable-status))
+;;/* set (change) column status */
 
 (defcfun ("glp_std_basis" %std-basis)
     :void
@@ -413,22 +554,11 @@ void lpx_get_col_bnds(LPX *lp, int j, int *typx, double *lb,
   (problem :pointer))
 ;;/* construct Bixby's initial LP basis */
 
-(defcfun ("glp_set_row_stat" %set-row-stat)
-    :void
-  (problem :pointer)
-  (index :int)
-  (status variable-status))
-
-(defcfun ("glp_set_col_stat" %set-col-stat)
-    :void
-  (problem :pointer)
-  (index :int)
-  (status variable-status))
-
 (defcfun ("glp_simplex" %simplex)
     solver-exit-code
   (problem :pointer)
   (params :pointer))
+;;/* solve LP problem with the simplex method */
 
 (defcfun ("glp_exact" %exact)
     solver-exit-code
@@ -436,18 +566,23 @@ void lpx_get_col_bnds(LPX *lp, int j, int *typx, double *lb,
   (params :pointer))
 ;;/* easy-to-use driver to the exact simplex method */
 
+(defcfun("glp_init_smcp" %init-smcp)
+  :void
+  (paramters :pointer))
+;;/* initialize simplex method control parameters */
+
 (defcfun ("glp_get_status" %get-status)
     lpx-status
   (problem :pointer))
 ;;/* retrieve generic status of basic solution */
 
 (defcfun ("glp_get_prim_stat" %get-prim-stat)
-    primal-basic-solution-status
+    solution-status
   (problem :pointer))
 ;;/* retrieve primal status of basic solution */
 
 (defcfun ("glp_get_dual_stat" %get-dual-stat)
-    dual-basic-solution-status
+    solution-status
   (problem :pointer))
 ;;/* retrieve dual status of basic solution */
 
@@ -474,13 +609,6 @@ void lpx_get_col_bnds(LPX *lp, int j, int *typx, double *lb,
   (index :int))
 ;;/* retrieve row dual value (basic solution) */
 
-#|
-(defcfun ("glp_get_row_info" %get-row-info))   /* obsolete */
-void lpx_get_row_info(LPX *lp, int i, int *tagx, double *vx,
-                      double *dx);
-/* obtain row solution information */
-|#
-
 (defcfun ("glp_get_col_stat" %get-col-stat)
     variable-status
   (problem :pointer)
@@ -499,33 +627,28 @@ void lpx_get_row_info(LPX *lp, int i, int *tagx, double *vx,
   (index :int))
 ;;/* retrieve column dual value (basic solution) */
 
-#|
-(defcfun ("glp_get_col_info" %get-col-info))   /* obsolete */
-void lpx_get_col_info(LPX *lp, int j, int *tagx, double *vx,
-                      double *dx);
-/* obtain column solution information */
-|#
+;;TODO unused
+;;int glp_get_unbnd_ray(glp_prob *P);
+;;/* determine variable causing unboundedness */
+;;int glp_get_it_cnt(glp_prob *P);
+;;/* get simplex solver iteration count */
+;;void glp_set_it_cnt(glp_prob *P, int it_cnt);
+;;/* set simplex solver iteration count */
 
-;; TODO: This function returns the index of some non-basic variable
-;; which causes primal unboundedness, and 0 if it doesn't know
-;; one. We'd probably prefer to return :UNKNOWN in the latter case.
-(defcfun ("glp_get_ray_info" %get-ray-info)
-    :int
-  (problem :pointer))
-;;/* determine what causes primal unboundness */
-
-(defcfun ("glp_warm_up" %warm-up)
-    solver-exit-code
-  (problem :pointer))
-;;/* "warm up" LP basis */
+;;Line  523
 
 (defcfun ("glp_interior" %interior)
     solver-exit-code
-  (problem :pointer))
+  (problem :pointer)
+  (parameters :pointer))
 ;;/* easy-to-use driver to the interior point method */
 
+(defcfun ("glp_init_iptcp" %init-iptcp)
+  :void
+  (parameters :pointer))
+
 (defcfun ("glp_ipt_status" %ipt-status)
-    interior-point-solution-status
+    solution-status
   (problem :pointer))
 ;;/* retrieve status of interior-point solution */
 
@@ -581,18 +704,19 @@ void lpx_get_col_info(LPX *lp, int j, int *tagx, double *vx,
   (problem :pointer))
 ;;/* retrieve number of binary columns */
 
-(defcfun ("glp_integer" %integer)
-    :int
-  (problem :pointer))
-;;/* easy-to-use driver to the branch-and-bound method */
-
 (defcfun ("glp_intopt" %intopt)
     solver-exit-code
-  (problem :pointer))
+  (problem :pointer)
+  (parameters :pointer))
 ;;/* easy-to-use driver to the branch-and-bound method */
 
+(defcfun ("glp_init_iocp" %init-iocp)
+  :void
+  (parameters :pointer))
+;;/* initialize integer optimizer control parameters */
+
 (defcfun ("glp_mip_status" %mip-status)
-    integer-solution-status
+    solution-status
   (problem :pointer))
 ;;/* retrieve status of MIP solution */
 
@@ -613,39 +737,4 @@ void lpx_get_col_info(LPX *lp, int j, int *tagx, double *vx,
   (index :int))
 ;;/* retrieve column value (MIP solution) */
 
-#|
-(defcfun ("glp_check_int" %check-int))      /* undocumented */
-void lpx_check_int(LPX *lp, LPXKKT *kkt);
-/* check integer feasibility conditions */
-|#
-
-(defcfun ("glp_reset_parms" %reset-parms)
-    :void
-  (problem :pointer))
-;;/* reset control parameters to default values */
-
-(defcfun ("glp_set_int_parm" %set-int-parm)
-    :void
-  (problem :pointer)
-  (parameter control-parameter)
-  (value :int))
-;;/* set (change) integer control parameter */
-
-(defcfun ("glp_get_int_parm" %get-int-parm)
-    :int
-  (problem :pointer)
-  (parameter control-parameter))
-;;/* query integer control parameter */
-
-(defcfun ("glp_set_real_parm" %set-real-parm)
-    :void
-  (problem :pointer)
-  (parameter control-parameter)
-  (value :double))
-;;/* set (change) real control parameter */
-
-(defcfun ("glp_get_real_parm" %get-real-parm)
-    :double
-  (problem :pointer)
-  (parameter control-parameter))
-;;/* query real control parameter */
+;; TODO ommitting everything starting with line 577

@@ -109,7 +109,7 @@
     ;; TODO Solve problem
     (ecase solver-mode
       (:simplex (%simplex glpk-ptr (null-pointer)))
-      (:integer (%intopt glpk-ptr)))
+      (:integer (%intopt glpk-ptr (null-pointer))))
 
     ;; Create solution object and return
     (let ((sol (make-glpk-solution :problem problem
