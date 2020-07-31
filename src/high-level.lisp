@@ -36,7 +36,17 @@
   (float num 0.0l0))
 
 
-(defun glpk-solver (problem &rest args)
+(defun glpk-solver (problem &key
+			      (fp-tolerance 1024)
+			      (enable-presolver nil)
+			      (pricing :standard)
+			      (method :primal)
+			      (ratio-test :standard)
+			      (branching-technique :driebeck-tomlin)
+			      (backtracking-technique :best-local-bound)
+			      (preprocessing-technique :all-levels)
+			      (cut-methods '())
+			      &allow-other-keys)
   "Solves the given linear problem using the GLPK library"
 
   ;; Allocate problem
@@ -108,8 +118,70 @@
 
     ;; TODO Solve problem
     (ecase solver-mode
-      (:simplex (%simplex glpk-ptr (null-pointer)))
-      (:integer (%intopt glpk-ptr (null-pointer))))
+      (:simplex
+       (with-foreign-object (ctrl '(:struct simplex-control-parameters))
+	 (%init-smcp ctrl)
+	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+				   'message-level)
+	       :off)
+	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+				   'enable-presolver)
+	       (if enable-presolver :on :off))
+	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+				   'pricing)
+	       pricing)
+	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+				   'method)
+	       method)
+	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+				   'ratio-test)
+	       ratio-test)
+	 ;; TODO: support more options
+	 (case (%simplex glpk-ptr ctrl)
+	   (:infeasible (error 'infeasible-problem-error))
+	   (:unbounded (error 'unbounded-problem-error))
+	   ;; (:no-feasible-solution-exists )
+	   )))
+      (:integer
+       (with-foreign-object (ctrl integer-control-parameters)
+	 (%init-iocp ctrl)
+	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+				   'message-level)
+	       :off)
+	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+				   'branching-technique)
+	       branching-technique)
+	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+				   'backtracking-technique)
+	       backtracking-technique)
+	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+				   'preprocessing-technique)
+	       preprocessing-technique)
+	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+				   'mir-cuts)
+	       (if (member 'mir cut-methods) :on :off))
+	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+				   'gomory-cuts)
+	       (if (member 'gomory cut-methods) :on :off))
+	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+				   'cover-cuts)
+	       (if (member 'cover cut-methods) :on :off))
+	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+				   'cover-cuts)
+	       (if (member 'cover cut-methods) :on :off))
+	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+				   'clique-cuts)
+	       (if (member 'clique cut-methods) :on :off))
+	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+				   'enable-presolver)
+	       (if enable-presolver :on :off))
+	 ;; TODO: check if all variables are binary, to enable BINARIZE
+	 ;; TODO: support more options
+	 (case (%intopt glpk-ptr ctrl)
+	   (:infeasible (error 'infeasible-problem-error))
+	   (:unbounded (error 'unbounded-problem-error))
+	   ;; (:no-feasible-solution-exists )
+	   ))))
 
     ;; Create solution object and return
     (let ((sol (make-glpk-solution :problem problem
