@@ -137,11 +137,11 @@
 				   'ratio-test)
 	       ratio-test)
 	 ;; TODO: support more options
-	 (case (%simplex glpk-ptr ctrl)
-	   (:infeasible (error 'infeasible-problem-error))
-	   (:unbounded (error 'unbounded-problem-error))
-	   ;; (:no-feasible-solution-exists )
-	   )))
+	 (%simplex glpk-ptr ctrl)
+	 (case (%get-status glpk-ptr)
+	   ((:no-feasible-solution-exists :infeasible)
+	    (error 'infeasible-problem-error))
+	   (:unbounded (error 'unbounded-problem-error)))))
       (:integer
        (with-foreign-object (ctrl integer-control-parameters)
 	 (%init-iocp ctrl)
@@ -177,11 +177,11 @@
 	       (if enable-presolver :on :off))
 	 ;; TODO: check if all variables are binary, to enable BINARIZE
 	 ;; TODO: support more options
-	 (case (%intopt glpk-ptr ctrl)
-	   (:infeasible (error 'infeasible-problem-error))
-	   (:unbounded (error 'unbounded-problem-error))
-	   ;; (:no-feasible-solution-exists )
-	   ))))
+	 (%intopt glpk-ptr ctrl)
+	 (case (%mip-status glpk-ptr)
+	   ((:infeasible :no-feasible-solution-exists)
+	    (error 'infeasible-problem-error))
+	   (:unbounded (error 'unbounded-problem-error))))))
 
     ;; Create solution object and return
     (let ((sol (make-glpk-solution :problem problem
