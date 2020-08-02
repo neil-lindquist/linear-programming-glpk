@@ -25,8 +25,9 @@
 
 (defmethod lp:solution-reduced-cost ((solution glpk-solution) variable)
   (ecase (glpk-solution-solver-mode solution)
-    (:simplex        (%get-col-dual (glpk-solution-ptr solution) (gethash variable (glpk-solution-var-index solution))))
-    (:interior-point (%ipt-col-dual (glpk-solution-ptr solution) (gethash variable (glpk-solution-var-index solution))))
+    ;; GLPK returns the negative reduced-cost
+    (:simplex        (- (%get-col-dual (glpk-solution-ptr solution) (gethash variable (glpk-solution-var-index solution)))))
+    (:interior-point (- (%ipt-col-dual (glpk-solution-ptr solution) (gethash variable (glpk-solution-var-index solution)))))
     (:integer        (error "GLPK does not provide reduced costs for mixed-integer problems"))))
 
 
