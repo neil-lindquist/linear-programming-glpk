@@ -37,18 +37,17 @@
 
 
 (defun glpk-solver (problem &key
-			      (fp-tolerance 1024)
-			      (enable-presolver nil)
-			      (pricing :standard)
-			      (method :primal)
-			      (ratio-test :standard)
-			      (branching-technique :driebeck-tomlin)
-			      (backtracking-technique :best-local-bound)
-			      (preprocessing-technique :all-levels)
-			      (cut-methods '())
-			      &allow-other-keys)
+			      (fp-tolerance 1024 fpto-supplied-p)
+			      (enable-presolver nil enpre-supplied-p)
+			      (pricing :standard pricing-supplied-p)
+			      (method :primal method-supplied-p)
+			      (ratio-test :standard rate-supplied-p)
+			      (branching-technique :driebeck-tomlin brt-supplied-p)
+			      (backtracking-technique :best-local-bound bat-supplied-p)
+			      (preprocessing-technique :all-levels prepro-supplied-p)
+			      (cut-methods '() cutm-supplied-p)
+		    &allow-other-keys)
   "Solves the given linear problem using the GLPK library"
-
   ;; Allocate problem
   (let* ((glpk-ptr (%create-prob))
          ;; Fetch content of problem
@@ -119,6 +118,12 @@
     ;; TODO Solve problem
     (ecase solver-mode
       (:simplex
+       (when (and solver-method
+		  (or brt-supplied-p
+		      bat-supplied-p
+		      prepro-supplied-p
+		      cutm-supplied-p))
+	 (error "Unused solver paramaters"))
        (with-foreign-object (ctrl '(:struct simplex-control-parameters))
 	 (%init-smcp ctrl)
 	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
@@ -143,6 +148,14 @@
 	    (error 'infeasible-problem-error))
 	   (:unbounded (error 'unbounded-problem-error)))))
       (:integer
+       (when (and solver-method
+		  (or fpto-supplied-p
+		      enpre-supplied-p
+		      pricing-supplied-p
+		      method-supplied-p
+		      rate-supplied-p
+		      oal-supplied-p))
+	 (error "Unused solver paramaters"))
        (with-foreign-object (ctrl integer-control-parameters)
 	 (%init-iocp ctrl)
 	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
