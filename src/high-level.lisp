@@ -47,7 +47,7 @@
 			      (backtracking-technique :best-local-bound bat-supplied-p)
 			      (preprocessing-technique :all-levels prepro-supplied-p)
 			      (cut-methods '() cutm-supplied-p)
-			      (message-level :off)
+			      (message-level nil)
 		    &allow-other-keys)
   "Solves the given linear problem using the GLPK library"
   ;; Allocate problem
@@ -59,6 +59,11 @@
          (int-vars (lp:problem-integer-vars problem))
          ;; map of variable's to their indices
          (var-index (make-hash-table :size (ceiling (* 5 (length prob-vars)) 4) :rehash-threshold 1))
+	 (message-level (ecase message-level
+			  (nil :off)
+			  ((:error :warn) :error)
+			  ((t :info) :on)
+			  (:debug :all)))
          ;; GLPK mode
          (solver-mode (cond (solver-method)
 			    ((null int-vars) :simplex)
