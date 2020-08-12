@@ -18,3 +18,14 @@
   :components ((:file "package")
                (:file "ffi")
                (:file "high-level")))
+
+(defsystem "linear-programming-glpk/test"
+  :description "The tests for the linear-programming-glpk package"
+  :author "Neil Lindquist <NeilLindquist5@gmail.com>"
+  :licence "GPL 3.0"
+  :depends-on (:linear-programming-glpk
+               :fiveam)
+  :serial t
+  :pathname "src"
+  :components ((:file "test"))
+  :perform (test-op (o c) (symbol-call '#:fiveam '#:run! (intern "LINEAR-PROGRAMMING-GLPK" :linear-programming-glpk/test))))
