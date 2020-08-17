@@ -60,7 +60,7 @@
          ;; map of variable's to their indices
          (var-index (make-hash-table :size (ceiling (* 5 (length prob-vars)) 4) :rehash-threshold 1))
 	 (message-level (ecase message-level
-			  (nil :off)
+			  ((nil :off) :off)
 			  ((:error :warn) :error)
 			  ((t :info) :on)
 			  (:debug :all)))
