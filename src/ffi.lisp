@@ -557,18 +557,18 @@ glp_cpxcp;
 (defcfun ("glp_simplex" %simplex)
     solver-exit-code
   (problem :pointer)
-  (params simplex-control-parameters))
+  (params (:pointer (:struct simplex-control-parameters))))
 ;;/* solve LP problem with the simplex method */
 
 (defcfun ("glp_exact" %exact)
     solver-exit-code
   (problem :pointer)
-  (params simplex-control-parameters))
+  (params (:pointer (:struct simplex-control-parameters))))
 ;;/* easy-to-use driver to the exact simplex method */
 
-(defcfun("glp_init_smcp" %init-smcp)
+(defcfun ("glp_init_smcp" %init-smcp)
   :void
-  (paramters simplex-control-parameters))
+  (paramters (:pointer (:struct simplex-control-parameters))))
 ;;/* initialize simplex method control parameters */
 
 (defcfun ("glp_get_status" %get-status)
@@ -707,12 +707,12 @@ glp_cpxcp;
 (defcfun ("glp_intopt" %intopt)
     solver-exit-code
   (problem :pointer)
-  (parameters integer-control-parameters))
+  (parameters (:pointer (:struct integer-control-parameters))))
 ;;/* easy-to-use driver to the branch-and-bound method */
 
 (defcfun ("glp_init_iocp" %init-iocp)
   :void
-  (parameters integer-control-parameters))
+  (parameters (:pointer (:struct integer-control-parameters))))
 ;;/* initialize integer optimizer control parameters */
 
 (defcfun ("glp_mip_status" %mip-status)
