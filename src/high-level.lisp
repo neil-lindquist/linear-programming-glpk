@@ -71,7 +71,7 @@
 
     ;; Check if solver-mode is known
     (unless (member solver-mode '(:integer :simplex :interior-point))
-      (error "Unsupported method %s" solver-mode))
+      (error "Unsupported method ~A" solver-mode))
 
     ;; Set min or max
     (%set-obj-dir glpk-ptr (if (eq (lp:problem-type problem) 'lp:max) :max :min))
