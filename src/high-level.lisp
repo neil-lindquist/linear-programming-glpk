@@ -149,9 +149,6 @@
 				   'pricing)
 	       pricing)
 	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
-				   'method)
-	       method)
-	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
 				   'ratio-test)
 	       ratio-test)
 	 ;; TODO: support more options
