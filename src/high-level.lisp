@@ -37,9 +37,20 @@
   (float num 0.0l0))
 
 
-(defun glpk-solver (problem &rest args)
+(defun glpk-solver (problem &key solver-method
+			      (fp-tolerance 1024 fpto-supplied-p)
+			      (enable-presolver nil enpre-supplied-p)
+			      (pricing :standard pricing-supplied-p)
+			      (method :primal method-supplied-p)
+			      (ratio-test :standard rate-supplied-p)
+			      (ordering-algorithm :approx-min-degree oal-supplied-p)
+			      (branching-technique :driebeck-tomlin brt-supplied-p)
+			      (backtracking-technique :best-local-bound bat-supplied-p)
+			      (preprocessing-technique :all-levels prepro-supplied-p)
+			      (cut-methods '() cutm-supplied-p)
+			      (message-level nil)
+		    &allow-other-keys)
   "Solves the given linear problem using the GLPK library"
-
   ;; Allocate problem
   (let* ((glpk-ptr (%create-prob))
          ;; Fetch content of problem
@@ -49,8 +60,19 @@
          (int-vars (lp:problem-integer-vars problem))
          ;; map of variable's to their indices
          (var-index (make-hash-table :size (ceiling (* 5 (length prob-vars)) 4) :rehash-threshold 1))
+	 (message-level (ecase message-level
+			  ((nil :off) :off)
+			  ((:error :warn) :error)
+			  ((t :info) :on)
+			  (:debug :all)))
          ;; GLPK mode
-         (solver-mode (if (null int-vars) :simplex :integer)))
+         (solver-mode (cond (solver-method)
+			    ((null int-vars) :simplex)
+			    (:integer))))
+
+    ;; Check if solver-mode is known
+    (unless (member solver-mode '(:integer :simplex :interior-point))
+      (error "Unsupported method ~A" solver-mode))
 
     ;; Set min or max
     (%set-obj-dir glpk-ptr (if (eq (lp:problem-type problem) 'lp:max) :max :min))
@@ -109,8 +131,103 @@
 
     ;; TODO Solve problem
     (ecase solver-mode
-      (:simplex (%simplex glpk-ptr (null-pointer)))
-      (:integer (%intopt glpk-ptr (null-pointer))))
+      (:simplex
+       (when (and solver-method
+		  (or brt-supplied-p
+		      bat-supplied-p
+		      prepro-supplied-p
+		      cutm-supplied-p))
+	 (error "Unused solver paramaters"))
+       (with-foreign-object (ctrl '(:struct simplex-control-parameters))
+	 (%init-smcp ctrl)
+	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+				   'message-level)
+	       message-level)
+	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+				   'enable-presolver)
+	       (if enable-presolver :on :off))
+	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+				   'pricing)
+	       pricing)
+	 (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+				   'ratio-test)
+	       ratio-test)
+	 ;; TODO: support more options
+	 (%simplex glpk-ptr ctrl)
+	 (case (%get-status glpk-ptr)
+	   ((:no-feasible-solution-exists :infeasible)
+	    (error 'infeasible-problem-error))
+	   (:unbounded (error 'unbounded-problem-error)))))
+      (:interior-point
+       (when (and solver-method
+		  (or fpto-supplied-p
+		      enpre-supplied-p
+		      pricing-supplied-p
+		      method-supplied-p
+		      rate-supplied-p
+		      brt-supplied-p
+		      bat-supplied-p
+		      prepro-supplied-p
+		      cutm-supplied-p))
+	 (error "Unused solver paramaters"))
+       (with-foreign-object (ctrl '(:struct interior-point-control-parameters))
+	 (%init-iptcp ctrl)
+	 (setf (foreign-slot-value ctrl '(:struct interior-point-control-parameters)
+				   'message-level)
+	       message-level)
+	 (setf (foreign-slot-value ctrl '(:struct interior-point-control-parameters)
+				   'ordering-algorithm)
+	       ordering-algorithm)
+	 (%interior glpk-ptr ctrl)
+	 (case (%ipt-status glpk-ptr)
+	   ((:no-feasible-solution-exists :infeasible)
+	    (error 'infeasible-problem-error))
+	   (:unbounded (error 'unbounded-problem-error)))))
+      (:integer
+       (when (and solver-method
+		  (or fpto-supplied-p
+		      enpre-supplied-p
+		      pricing-supplied-p
+		      method-supplied-p
+		      rate-supplied-p
+		      oal-supplied-p))
+	 (error "Unused solver paramaters"))
+       (with-foreign-object (ctrl '(:struct integer-control-parameters))
+	 (%init-iocp ctrl)
+	 (setf (foreign-slot-value ctrl '(:struct integer-control-parameters)
+				   'message-level)
+	       message-level)
+	 (setf (foreign-slot-value ctrl '(:struct integer-control-parameters)
+				   'branching-technique)
+	       branching-technique)
+	 (setf (foreign-slot-value ctrl '(:struct integer-control-parameters)
+				   'backtracking-technique)
+	       backtracking-technique)
+	 (setf (foreign-slot-value ctrl '(:struct integer-control-parameters)
+				   'preprocessing-technique)
+	       preprocessing-technique)
+	 (setf (foreign-slot-value ctrl '(:struct integer-control-parameters)
+				   'mir-cuts)
+	       (if (member 'mir cut-methods) :on :off))
+	 (setf (foreign-slot-value ctrl '(:struct integer-control-parameters)
+				   'gomory-cuts)
+	       (if (member 'gomory cut-methods) :on :off))
+	 (setf (foreign-slot-value ctrl '(:struct integer-control-parameters)
+				   'cover-cuts)
+	       (if (member 'cover cut-methods) :on :off))
+	 (setf (foreign-slot-value ctrl '(:struct integer-control-parameters)
+				   'cover-cuts)
+	       (if (member 'cover cut-methods) :on :off))
+	 (setf (foreign-slot-value ctrl '(:struct integer-control-parameters)
+				   'clique-cuts)
+	       (if (member 'clique cut-methods) :on :off))
+	 ;; TODO: check if all variables are binary, to enable BINARIZE
+	 ;; TODO: support more options
+	 (%intopt glpk-ptr ctrl)
+	 (case (%mip-status glpk-ptr)
+	   ((:infeasible :no-feasible-solution-exists)
+	    (error 'infeasible-problem-error))
+	   (:unbounded (error 'unbounded-problem-error))))))
 
     ;; Create solution object and return
     (let ((sol (make-glpk-solution :problem problem
