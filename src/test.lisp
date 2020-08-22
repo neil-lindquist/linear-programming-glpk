@@ -75,3 +75,21 @@
 	 (solution (lp:solve-problem problem)))
     (dolist (var vars)
       (is (= 0 (lp:solution-variable solution var))))))
+
+
+(test :infeasible
+  (fiveam:signals (error lp:infeasible-problem-error)
+    (lp:with-solved-problem ((max x)
+			     (< x y)
+			     (< y x))
+      (error "Should not work"))))
+
+
+(test :unbounded
+  (fiveam:signals (error lp:infeasible-problem-error)
+    (lp:with-solved-problem ((max x)
+			     (< 0 x)
+			     (< y x)
+			     (< 0 y))
+      (error "Should not work"))))
+
