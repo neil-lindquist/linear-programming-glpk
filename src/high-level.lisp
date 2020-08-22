@@ -221,6 +221,16 @@
 	 (setf (foreign-slot-value ctrl '(:struct integer-control-parameters)
 				   'clique-cuts)
 	       (if (member 'clique cut-methods) :on :off))
+	 (if enable-presolver
+	     (setf (foreign-slot-value ctrl '(:struct integer-control-parameters)
+				       'presolve)
+		   :on)
+	     (progn
+	       (%simplex glpk-ptr (null-pointer))
+	       (case (%get-status glpk-ptr)
+		 ((:no-feasible-solution-exists :infeasible)
+		  (error 'lp:infeasible-problem-error))
+		 (:unbounded (error 'lp:unbounded-problem-error)))))
 	 ;; TODO: check if all variables are binary, to enable BINARIZE
 	 ;; TODO: support more options
 	 (%intopt glpk-ptr ctrl)
