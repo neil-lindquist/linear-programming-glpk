@@ -46,3 +46,20 @@
     (is (= 840 (lp:solution-objective-value solution)))
     (is (= 3 (lp:solution-variable solution 'x)))
     (is (= 1 (lp:solution-variable solution 'y)))))
+
+
+(test :glpk
+  ;; GLPK example from the manual (p. 12f)
+  (let* ((problem (lp:make-linear-problem
+		   (max (+ (* 10 x1) (* 6 x2) (* 4 x3)))
+		   (<= 0 x1) (<= 0 x2) (<= 0 x3)
+		   (<= (+ x1 x2 x3)			100)
+		   (<= (+ (* 10 x1) (* 4 x2) (* 5 x3))	600)
+		   (<= (+ (*  2 x1) (* 2 x2) (* 6 x3))	300)))
+         (solution (lp:solve-problem problem :method :simplex))
+	 (eps 1d-10))
+    (is (eq problem (lp:solution-problem solution)))
+    (is (<= (- 2200/3 eps) (lp:solution-objective-value solution) (+ 2200/3 eps)))
+    (is (<= (- 100/3 eps) (lp:solution-variable solution 'x1) (+ 100/3 eps)))
+    (is (<= (- 200/3 eps) (lp:solution-variable solution 'x2) (+ 200/3 eps)))
+    (is (= 0 (lp:solution-variable solution 'x3)))))
