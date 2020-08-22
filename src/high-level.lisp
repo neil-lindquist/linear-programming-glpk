@@ -153,7 +153,9 @@
 				   'ratio-test)
 	       ratio-test)
 	 ;; TODO: support more options
-	 (%simplex glpk-ptr ctrl)
+	 (let ((result (%simplex glpk-ptr ctrl)))
+	   (unless (eq result :success)
+	     (error "Solver failed with state ~A" result)))
 	 (case (%get-status glpk-ptr)
 	   ((:no-feasible-solution-exists :infeasible)
 	    (error 'infeasible-problem-error))
@@ -178,7 +180,9 @@
 	 (setf (foreign-slot-value ctrl '(:struct interior-point-control-parameters)
 				   'ordering-algorithm)
 	       ordering-algorithm)
-	 (%interior glpk-ptr ctrl)
+	 (let ((result (%interior glpk-ptr ctrl)))
+	   (unless (eq result :success)
+	     (error "Solver failed with state ~A" result)))
 	 (case (%ipt-status glpk-ptr)
 	   ((:no-feasible-solution-exists :infeasible)
 	    (error 'infeasible-problem-error))
@@ -223,7 +227,9 @@
 	       (if (member 'clique cut-methods) :on :off))
 	 ;; TODO: check if all variables are binary, to enable BINARIZE
 	 ;; TODO: support more options
-	 (%intopt glpk-ptr ctrl)
+	 (let ((result (%intopt glpk-ptr ctrl)))
+	   (unless (eq result :success)
+	     (error "Solver failed with state ~A" result)))
 	 (case (%mip-status glpk-ptr)
 	   ((:infeasible :no-feasible-solution-exists)
 	    (error 'infeasible-problem-error))
