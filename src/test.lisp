@@ -63,3 +63,15 @@
     (is (<= (- 100/3 eps) (lp:solution-variable solution 'x1) (+ 100/3 eps)))
     (is (<= (- 200/3 eps) (lp:solution-variable solution 'x2) (+ 200/3 eps)))
     (is (= 0 (lp:solution-variable solution 'x3)))))
+
+
+(test :large
+  (let* ((vars (loop :repeat 10000 :collect (gensym)))
+	 (problem (lp:parse-linear-problem
+		   `(min (+ . ,vars))
+		   (loop :for var1 :in vars
+			 :for var2 :in (rest vars)
+			 :collect (list '= var1 var2))))
+	 (solution (lp:solve-problem problem)))
+    (dolist (var vars)
+      (is (= 0 (lp:solution-variable solution var))))))
