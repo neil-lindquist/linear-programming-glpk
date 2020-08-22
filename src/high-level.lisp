@@ -39,7 +39,7 @@
 
 (defun glpk-solver (problem &key solver-method
                                  (fp-tolerance 1024 fpto-supplied-p)
-                                 (enable-presolver nil enpre-supplied-p)
+                                 (enable-presolver t enpre-supplied-p)
                                  (pricing :standard pricing-supplied-p)
                                  (method :primal method-supplied-p)
                                  (ratio-test :standard rate-supplied-p)
