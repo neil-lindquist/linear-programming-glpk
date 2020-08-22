@@ -45,6 +45,4 @@
     (is (eq problem (lp:solution-problem solution)))
     (is (= 840 (lp:solution-objective-value solution)))
     (is (= 3 (lp:solution-variable solution 'x)))
-    (is (= 1 (lp:solution-variable solution 'y)))
-    (is (= 0 (lp:solution-reduced-cost solution 'x)))
-    (is (= 0 (lp:solution-reduced-cost solution 'y)))))
+    (is (= 1 (lp:solution-variable solution 'y)))))
