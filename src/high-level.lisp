@@ -4,37 +4,33 @@
 
 (defstruct glpk-solution
   problem
-  ptr
   solver-mode  ;; :simplex :interior-point or :integer
+  objective-value
+  var-values ;; padded to be 1-indexed
+  var-reduced-costs ;; padded to be 1-indexed
   var-index)
 
 (defmethod lp:solution-problem ((solution glpk-solution))
   (glpk-solution-problem solution))
 
 (defmethod lp:solution-objective-value ((solution glpk-solution))
-  (ecase (glpk-solution-solver-mode solution)
-    (:simplex        (%get-obj-val (glpk-solution-ptr solution)))
-    (:interior-point (%ipt-obj-val (glpk-solution-ptr solution)))
-    (:integer        (%mip-obj-val (glpk-solution-ptr solution)))))
+  (glpk-solution-objective-value solution))
 
 (defmethod lp:solution-variable ((solution glpk-solution) variable)
-  (ecase (glpk-solution-solver-mode solution)
-    (:simplex        (%get-col-prim (glpk-solution-ptr solution) (gethash variable (glpk-solution-var-index solution))))
-    (:interior-point (%ipt-col-prim (glpk-solution-ptr solution) (gethash variable (glpk-solution-var-index solution))))
-    (:integer        (%mip-col-val  (glpk-solution-ptr solution) (gethash variable (glpk-solution-var-index solution))))))
+  (aref (glpk-solution-var-values solution) (gethash variable (glpk-solution-var-index solution))))
 
 (defmethod lp:solution-reduced-cost ((solution glpk-solution) variable)
-  (ecase (glpk-solution-solver-mode solution)
-    ;; GLPK returns the negative reduced-cost
-    (:simplex        (- (%get-col-dual (glpk-solution-ptr solution) (gethash variable (glpk-solution-var-index solution)))))
-    (:interior-point (- (%ipt-col-dual (glpk-solution-ptr solution) (gethash variable (glpk-solution-var-index solution)))))
-    (:integer        (error "GLPK does not provide reduced costs for mixed-integer problems"))))
+  (when (eq (glpk-solution-solver-mode solution) :integer)
+    (error "GLPK does not provide reduced costs for mixed-integer problems"))
+  (aref (glpk-solution-var-reduced-costs solution) (gethash variable (glpk-solution-var-index solution))))
 
-
-(declaim (inline as-glpk-float))
+(declaim (inline as-glpk-float glpk-float))
 (defun as-glpk-float (num)
   "Converts a number to a type that CFFI can convert to a C double"
   (float num 0.0l0))
+
+(defun glpk-float-type ()
+  (type-of 0.0l0))
 
 
 (defun glpk-solver (problem &key solver-method
@@ -56,10 +52,11 @@
          ;; Fetch content of problem
          (prob-constraints (lp:problem-constraints problem))
          (prob-vars (lp:problem-vars problem))
+         (var-count (length prob-vars))
          (prob-bounds (lp:problem-var-bounds problem))
          (int-vars (lp:problem-integer-vars problem))
          ;; map of variable's to their indices
-         (var-index (make-hash-table :size (ceiling (* 5 (length prob-vars)) 4) :rehash-threshold 1))
+         (var-index (make-hash-table :size (ceiling (* 5 var-count) 4) :rehash-threshold 1))
          (message-level (ecase message-level
                          ((nil :off) :off)
                          ((:error :warn) :error)
@@ -246,12 +243,39 @@
              (error 'infeasible-problem-error))
             (:unbounded (error 'unbounded-problem-error))))))
 
-    ;; Create solution object and return
-    (let ((sol (make-glpk-solution :problem problem
-                                   :ptr glpk-ptr
-                                   :solver-mode solver-mode
-                                   :var-index var-index)))
-      (trivial-garbage:finalize sol (lambda () (%delete-prob glpk-ptr)))
-      sol)))
+    ;; Copy solution to lisp arrays
+    ;; GLPK problems can't move threads and lisp's GC gives no guarantee
+    (let ((objective-value (ecase solver-mode
+                             (:simplex        (%get-obj-val glpk-ptr))
+                             (:interior-point (%ipt-obj-val glpk-ptr))
+                             (:integer        (%mip-obj-val glpk-ptr))))
+          (var-values        (make-array (list (1+ var-count))
+                                         :element-type (glpk-float-type)))
+          (var-reduced-costs (make-array (list (if (eq solver-mode :integer) 0 (1+ var-count)))
+                                         :element-type (glpk-float-type))))
+
+      (ecase solver-mode
+        (:simplex
+         (loop :for i :from 1 :to var-count
+           :do (setf (aref var-values i)       (%get-col-prim glpk-ptr i)
+                     (aref var-reduced-costs i) (- (%get-col-dual glpk-ptr i)))))
+        (:interior-point
+         (loop :for i :from 1 :to var-count
+           :do (setf (aref var-values i)       (%ipt-col-prim glpk-ptr i)
+                     (aref var-reduced-costs i) (- (%ipt-col-dual glpk-ptr i)))))
+        (:integer
+         (loop :for i :from 1 :to var-count
+           :do (setf (aref var-values i)       (%mip-col-val glpk-ptr i)))))
+
+      ;; Free GLPK's problem object
+      (%delete-prob glpk-ptr)
+
+      ;; Return a lisp solution object
+      (make-glpk-solution :problem problem
+                          :solver-mode solver-mode
+                          :objective-value objective-value
+                          :var-values var-values
+                          :var-reduced-costs var-reduced-costs
+                          :var-index var-index))))
 
 (defvar glpk-solver (function glpk-solver))
