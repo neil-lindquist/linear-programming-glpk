@@ -10,9 +10,7 @@
   :mailto "NeilLindquist5@gmail.com"
   :source-control (:git "https://github.com/neil-lindquist/linear-programming-gplk.git")
 
-  :depends-on (:cffi
-               :trivial-garbage ;; for finalizer to destroy glpk problem objects
-               :linear-programming)
+  :depends-on (:cffi :linear-programming)
   :serial t
   :pathname "src"
   :components ((:file "package")
