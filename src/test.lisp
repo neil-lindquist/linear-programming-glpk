@@ -93,3 +93,8 @@
 			     (< 0 y))
       (error "Should not work"))))
 
+
+(test :no-constraints
+  (fiveam:signals (error)
+    (lp:with-solved-problem ((max x))
+      (error "Should not work"))))
