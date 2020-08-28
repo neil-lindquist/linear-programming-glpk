@@ -76,6 +76,8 @@
     (%set-obj-dir glpk-ptr (if (eq (lp:problem-type problem) 'lp:max) :max :min))
 
     ;; Set the number of constraints
+    (unless (< 0 (length prob-constraints))
+      (error "No constraints"))
     (%add-rows glpk-ptr (length prob-constraints))
 
     ;; Set the number of variables, their names, and their bounds
