@@ -16,6 +16,6 @@ Finally, download and compile [GLPK](https://www.gnu.org/software/glpk/) and pla
 To check that it is working and that GLPK can be found, the tests can be run with `(asdf:test-system :linear-programming-glpk)`.
 
 Instead of compiling GLPK by hand, there may be precompiled binaries for your platform.
-First, the [Julia GLPK wrapper]() provides [precompiled binaries for a variety of platforms](https://github.com/JuliaBinaryWrappers/GLPK_jll.jl/releases).
+First, the [Julia GLPK wrapper](https://github.com/jump-dev/GLPK.jl/) provides [precompiled binaries for a variety of platforms](https://github.com/JuliaBinaryWrappers/GLPK_jll.jl/releases).
 Additionally, there is a set of prebuild binaries [specifically for Windows](http://winglpk.sourceforge.net/).
 Finally, your operating system's package manager may provide binaries for your platform.
