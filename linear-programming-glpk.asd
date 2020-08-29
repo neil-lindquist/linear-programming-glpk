@@ -9,13 +9,13 @@
   :bug-tracker "https://github.com/neil-lindquist/linear-programming-gplk/issues"
   :mailto "NeilLindquist5@gmail.com"
   :source-control (:git "https://github.com/neil-lindquist/linear-programming-gplk.git")
-
   :depends-on (:cffi :linear-programming)
   :serial t
   :pathname "src"
   :components ((:file "package")
                (:file "ffi")
-               (:file "high-level")))
+               (:file "high-level"))
+  :in-order-to ((test-op (test-op "linear-programming-glpk/test"))))
 
 (defsystem "linear-programming-glpk/test"
   :description "The tests for the linear-programming-glpk package"
