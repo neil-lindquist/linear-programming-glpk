@@ -52,7 +52,6 @@
   ;; GLPK example from the manual (p. 12f)
   (let* ((problem (lp:make-linear-problem
                    (max (+ (* 10 x1) (* 6 x2) (* 4 x3)))
-                   (<= 0 x1) (<= 0 x2) (<= 0 x3)
                    (<= (+ x1 x2 x3)                     100)
                    (<= (+ (* 10 x1) (* 4 x2) (* 5 x3))  600)
                    (<= (+ (*  2 x1) (* 2 x2) (* 6 x3))  300)))
