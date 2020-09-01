@@ -235,7 +235,12 @@
                   ((:no-feasible-solution-exists :infeasible)
                    (error 'lp:infeasible-problem-error))
                   (:unbounded (error 'lp:unbounded-problem-error)))))
-         ;; TODO: check if all variables are binary, to enable BINARIZE
+         (setf (foreign-slot-value ctrl '(:struct integer-control-parameters)
+                                   'binarize)
+               (if (loop :for var :in int-vars
+                         :always (equal (cdr (assoc var prob-bounds))
+                                        '(0 . 1)))
+                   :on :off))
          ;; TODO: support more options
          (let ((result (%intopt glpk-ptr ctrl)))
             (unless (eq result :success)
