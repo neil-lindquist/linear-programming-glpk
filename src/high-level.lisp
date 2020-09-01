@@ -152,14 +152,18 @@
          (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
                   'ratio-test)
                ratio-test)
-        ;; TODO: support more options
-        (let ((result (%simplex glpk-ptr ctrl)))
-           (unless (eq result :success)
-              (error "Solver failed with state ~A" result)))
-        (case (%get-status glpk-ptr)
-           ((:no-feasible-solution-exists :infeasible)
-            (error 'infeasible-problem-error))
-           (:unbounded (error 'unbounded-problem-error)))))
+         ;; TODO: support more options
+         (let ((result (%simplex glpk-ptr ctrl)))
+           (case result
+             ((:success)
+              (case (%get-status glpk-ptr)
+                ((:infeasible :no-feasible-solution-exists)
+                 (error 'lp:infeasible-problem-error))
+                (:unbounded (error 'lp:unbounded-problem-error))))
+             ((:no-primal-feasible-sol)
+              (error 'lp:infeasible-problem-error))
+             (otherwise
+              (error "Solver failed with state ~A" result))))))
       (:interior-point
        (when (and solver-method
                   (or fpto-supplied-p
@@ -181,12 +185,16 @@
                   'ordering-algorithm)
                ordering-algorithm)
          (let ((result (%interior glpk-ptr ctrl)))
-            (unless (eq result :success)
-               (error "Solver failed with state ~A" result)))
-         (case (%ipt-status glpk-ptr)
-            ((:no-feasible-solution-exists :infeasible)
-             (error 'infeasible-problem-error))
-            (:unbounded (error 'unbounded-problem-error)))))
+           (case result
+             ((:success)
+              (case (%ipt-status glpk-ptr)
+                ((:infeasible :no-feasible-solution-exists)
+                 (error 'lp:infeasible-problem-error))
+                (:unbounded (error 'unbounded-problem-error))))
+             ((:no-primal-feasible-sol)
+              (error 'lp:infeasible-problem-error))
+             (otherwise
+              (error "Solver failed with state ~A" result))))))
       (:integer
        (when (and solver-method
                   (or fpto-supplied-p
@@ -243,12 +251,16 @@
                    :on :off))
          ;; TODO: support more options
          (let ((result (%intopt glpk-ptr ctrl)))
-            (unless (eq result :success)
-               (error "Solver failed with state ~A" result)))
-         (case (%mip-status glpk-ptr)
-            ((:infeasible :no-feasible-solution-exists)
-             (error 'infeasible-problem-error))
-            (:unbounded (error 'unbounded-problem-error))))))
+           (case result
+             ((:success)
+              (case (%mip-status glpk-ptr)
+                ((:infeasible :no-feasible-solution-exists)
+                 (error 'lp:infeasible-problem-error))
+                (:unbounded (error 'lp:unbounded-problem-error))))
+	     ((:no-primal-feasible-sol)
+	      (error 'lp:infeasible-problem-error))
+             (otherwise
+              (error "Solver failed with state ~A" result)))))))
 
     ;; Copy solution to lisp arrays
     ;; GLPK problems can't move threads and lisp's GC gives no guarantee
