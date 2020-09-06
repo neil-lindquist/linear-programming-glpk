@@ -1,6 +1,7 @@
 # linear-programming-glpk
 
 ![GPL License](https://img.shields.io/github/license/neil-lindquist/linear-programming-glpk.svg?color=informational)
+[![Build Status](https://img.shields.io/travis/com/neil-lindquist/linear-programming-glpk?label=Tests&logo=travis)](https://travis-ci.com/github/neil-lindquist/linear-programming-glpk)
 
 This is a backend for the [linear-programming](https://github.com/neil-lindquist/linear-programming) Common Lisp library using the GNU Linear Programming Kit library (GLPK).
 To use this backend, simply evaluate `(setf linear-programming:*solver* glpk:glpk-solver)` before calling `linear-programming:solve-problem`.  Then, the linear-programming library will automatically use GLPK to solve problems.
