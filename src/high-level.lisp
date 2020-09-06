@@ -10,16 +10,16 @@
   var-reduced-costs ;; padded to be 1-indexed
   var-index)
 
-(defmethod lp:solution-problem ((solution glpk-solution))
+(defmethod linear-programming:solution-problem ((solution glpk-solution))
   (glpk-solution-problem solution))
 
-(defmethod lp:solution-objective-value ((solution glpk-solution))
+(defmethod linear-programming:solution-objective-value ((solution glpk-solution))
   (glpk-solution-objective-value solution))
 
-(defmethod lp:solution-variable ((solution glpk-solution) variable)
+(defmethod linear-programming:solution-variable ((solution glpk-solution) variable)
   (aref (glpk-solution-var-values solution) (gethash variable (glpk-solution-var-index solution))))
 
-(defmethod lp:solution-reduced-cost ((solution glpk-solution) variable)
+(defmethod linear-programming:solution-reduced-cost ((solution glpk-solution) variable)
   (when (eq (glpk-solution-solver-mode solution) :integer)
     (error "GLPK does not provide reduced costs for mixed-integer problems"))
   (aref (glpk-solution-var-reduced-costs solution) (gethash variable (glpk-solution-var-index solution))))
@@ -50,11 +50,11 @@
   ;; Allocate problem
   (let* ((glpk-ptr (%create-prob))
          ;; Fetch content of problem
-         (prob-constraints (lp:problem-constraints problem))
-         (prob-vars (lp:problem-vars problem))
+         (prob-constraints (linear-programming:problem-constraints problem))
+         (prob-vars (linear-programming:problem-vars problem))
          (var-count (length prob-vars))
-         (prob-bounds (lp:problem-var-bounds problem))
-         (int-vars (lp:problem-integer-vars problem))
+         (prob-bounds (linear-programming:problem-var-bounds problem))
+         (int-vars (linear-programming:problem-integer-vars problem))
          ;; map of variable's to their indices
          (var-index (make-hash-table :size (ceiling (* 5 var-count) 4) :rehash-threshold 1))
          (message-level (ecase message-level
@@ -73,7 +73,7 @@
       (error "Unsupported method ~A" solver-mode))
 
     ;; Set min or max
-    (%set-obj-dir glpk-ptr (if (eq (lp:problem-type problem) 'lp:max) :max :min))
+    (%set-obj-dir glpk-ptr (if (eq (linear-programming:problem-type problem) 'linear-programming:max) :max :min))
 
     ;; Set the number of constraints
     (unless (< 0 (length prob-constraints))
@@ -119,8 +119,8 @@
              (%set-mat-row glpk-ptr i num-entries inds vals)))
 
     ;; Setup the objective function
-    (%set-obj-name glpk-ptr (string (lp:problem-objective-var problem)))
-    (loop :for (var . coef) :in (lp:problem-objective-func problem)
+    (%set-obj-name glpk-ptr (string (linear-programming:problem-objective-var problem)))
+    (loop :for (var . coef) :in (linear-programming:problem-objective-func problem)
           :for j = (gethash var var-index)
       :do (%set-obj-coef glpk-ptr j (as-glpk-float coef)))
 
@@ -233,8 +233,8 @@
                  (%simplex glpk-ptr (null-pointer))
                  (case (%get-status glpk-ptr)
                   ((:no-feasible-solution-exists :infeasible)
-                   (error 'lp:infeasible-problem-error))
-                  (:unbounded (error 'lp:unbounded-problem-error)))))
+                   (error 'linear-programming:infeasible-problem-error))
+                  (:unbounded (error 'linear-programming:unbounded-problem-error)))))
          ;; TODO: check if all variables are binary, to enable BINARIZE
          ;; TODO: support more options
          (let ((result (%intopt glpk-ptr ctrl)))
