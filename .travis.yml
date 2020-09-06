@@ -1,0 +1,49 @@
+language: generic
+dist: bionic
+
+#from https://github.com/roswell/roswell/wiki/Travis-CI
+
+addons:
+  #homebrew:
+  #  update: true
+  #  packages:
+  #  - roswell
+  #  - glpk
+  apt:
+    packages:
+      - libc6-i386
+      - default-jre
+      - libglpk40
+
+env:
+  global:
+    - PATH=~/.roswell/bin:$PATH
+    - ROSWELL_INSTALL_DIR=$HOME/.roswell
+  jobs:
+    - LISP=sbcl-bin
+    - LISP=abcl
+    - LISP=ecl
+    - LISP=alisp
+    - LISP=ccl-bin
+    - LISP=cmucl
+#    - LISP=clisp #fails to download
+
+#jobs:
+#  fast_finish: true
+#  include:
+#    - os: osx
+#      env: LISP=sbcl/2.0.7
+#    - os: osx
+#      env: LISP=ccl-bin
+
+cache:
+  directories:
+    - $HOME/.roswell
+    - $HOME/.config/common-lisp
+
+install:
+  - curl -L https://raw.githubusercontent.com/roswell/roswell/release/scripts/install-for-ci.sh | sh
+  - ros install neil-lindquist/ci-utils
+
+script:
+  - run-fiveam -e t -l linear-programming-glpk/test linear-programming-glpk/test:linear-programming-glpk
