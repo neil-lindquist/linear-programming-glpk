@@ -50,8 +50,8 @@ script:
   - echo $LD_LIBRARY_PATH
   - ls /usr/lib
   - ls /lib
-  - sudo ln -s /usr/lib/x86_64-linux-gnu/libglpk.so.40 /usr/lib/libglpk.so
-  - sudo ln -s /usr/lib/x86_64-linux-gnu/libglpk.so.40 /usr/lib/libglpk.so.40
+  - sudo ln -s /usr/lib/x86_64-linux-gnu/libglpk.so.40 /lib/libglpk.so
+  - sudo ln -s /usr/lib/x86_64-linux-gnu/libglpk.so.40 /lib/libglpk.so.40
   - ls /usr/lib
   - ls /lib
   - ldd /usr/lib/libglpk.so
