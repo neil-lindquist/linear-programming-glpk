@@ -32,8 +32,8 @@ jobs:
   fast_finish: true
   allowed_failures:
     # Can't get the shared library correct with either of these
-    - LISP=alisp
-    - LISP=cmucl
+    - env: LISP=alisp
+    - env: LISP=cmucl
 #  include:
 #    - os: osx
 #      env: LISP=sbcl/2.0.7
