@@ -26,7 +26,7 @@ env:
     - LISP=alisp
     - LISP=ccl-bin
     - LISP=cmucl
-    - LISP=clisp #fails to download
+#    - LISP=clisp #fails to download
 
 #jobs:
 #  fast_finish: true
