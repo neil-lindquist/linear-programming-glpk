@@ -5,7 +5,7 @@
 
 (define-foreign-library libglpk
   (:windows (:or "glpk" "glpk_4_65"))
-  (:unix (:or "libglpk.so" "libglpk.so.40"))
+  (:unix (:or "libglpk.so.40"))
   (t (:default "libglpk")))
 
 (use-foreign-library libglpk)
