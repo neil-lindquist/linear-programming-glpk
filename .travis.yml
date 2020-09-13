@@ -47,7 +47,10 @@ install:
 
 script:
   - echo $LD_LIBRARY_PATH
+  - ls /usr/lib
+  - ls /lib
   - sudo ln -s /usr/lib/x86_64-linux-gnu/libglpk.so.40 /usr/lib/libglpk.so
+  - sudo ln -s /usr/lib/x86_64-linux-gnu/libglpk.so.40 /usr/lib/libglpk.so.40
   - ls /usr/lib
   - ls /lib
   - run-fiveam -e t -l linear-programming-glpk/test linear-programming-glpk/test:linear-programming-glpk
