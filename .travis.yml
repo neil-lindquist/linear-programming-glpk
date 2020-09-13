@@ -46,5 +46,5 @@ install:
   - ros install neil-lindquist/ci-utils
 
 script:
-  - export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/:$LD_LIBRARY_PATH
+  - sudo ln -s /usr/lib/x86_64-linux-gnu/libglpk.so.40 /usr/lib/libglpk.so
   - run-fiveam -e t -l linear-programming-glpk/test linear-programming-glpk/test:linear-programming-glpk
