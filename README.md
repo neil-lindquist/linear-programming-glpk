@@ -7,7 +7,7 @@ This is a backend for the [linear-programming](https://github.com/neil-lindquist
 To use this backend, simply evaluate `(setf linear-programming:*solver* glpk:glpk-solver)` before calling `linear-programming:solve-problem`.  Then, the linear-programming library will automatically use GLPK to solve problems.
 
 ## Installation
-This library is not yet in the main Quicklisp distribution, so it needs to be installed via [Ultralisp's Quicklisp distribution](ultralisp.org) or installed manually.
+This library is not yet in the main Quicklisp distribution, so it needs to be installed via [Ultralisp's Quicklisp distribution](https://ultralisp.org) or installed manually.
 To install it via Ultralisp, make sure the Ultralisp distribution is registered with Quicklisp, evaluating `(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)` if needed.
 Then, simply evaluate `(ql:quickload :linear-programming-glpk)`.
 To install it manually, install [linear-programming](https://github.com/neil-lindquist/linear-programming), [CFFI](https://www.common-lisp.net/project/cffi/), and this repository somewhere ASDF can find them.  (The first two are provided in the main Quicklisp distribution.)
