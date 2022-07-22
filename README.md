@@ -1,6 +1,6 @@
 # linear-programming-glpk
 
-[![Travis Status](https://img.shields.io/badge/Build-Disabled-inactive?logo=Travis)](https://blog.travis-ci.com/2020-11-02-travis-ci-new-billing)
+[![Github Actions Status](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Factions-badge.atrox.dev%2Fneil-lindquist%2Flinear-programming-glpk%2Fbadge&style=flat&label=build)](https://actions-badge.atrox.dev/neil-lindquist/linear-programming-glpk/goto)
 ![GPL License](https://img.shields.io/github/license/neil-lindquist/linear-programming-glpk.svg?color=informational)
 
 This is a backend for the [linear-programming](https://github.com/neil-lindquist/linear-programming) Common Lisp library using the GNU Linear Programming Kit (GLPK) library.
