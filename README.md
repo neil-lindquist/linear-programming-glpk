@@ -1,22 +1,24 @@
 # linear-programming-glpk
 
+[![Travis Status](https://img.shields.io/badge/Build-Disabled-inactive?logo=Travis)](https://blog.travis-ci.com/2020-11-02-travis-ci-new-billing)
 ![GPL License](https://img.shields.io/github/license/neil-lindquist/linear-programming-glpk.svg?color=informational)
-[![Build Status](https://img.shields.io/travis/com/neil-lindquist/linear-programming-glpk?label=Tests&logo=travis)](https://travis-ci.com/github/neil-lindquist/linear-programming-glpk)
 
-This is a backend for the [linear-programming](https://github.com/neil-lindquist/linear-programming) Common Lisp library using the GNU Linear Programming Kit library (GLPK).
+This is a backend for the [linear-programming](https://github.com/neil-lindquist/linear-programming) Common Lisp library using the GNU Linear Programming Kit (GLPK) library.
 To use this backend, simply evaluate `(setf linear-programming:*solver* glpk:glpk-solver)` before calling `linear-programming:solve-problem`.  Then, the linear-programming library will automatically use GLPK to solve problems.
 
 ## Installation
-This library is not yet in the main Quicklisp distribution, so it needs to be installed via [Ultralisp's Quicklisp distribution](https://ultralisp.org) or installed manually.
-To install it via Ultralisp, make sure the Ultralisp distribution is registered with Quicklisp, evaluating `(ql-dist:install-dist "http://dist.ultralisp.org/" :prompt nil)` if needed.
-Then, simply evaluate `(ql:quickload :linear-programming-glpk)`.
-To install it manually, install [linear-programming](https://github.com/neil-lindquist/linear-programming), [CFFI](https://www.common-lisp.net/project/cffi/), and this repository somewhere ASDF can find them.  (The first two are provided in the main Quicklisp distribution.)
+First, obtain a shared library for [GLPK](https://www.gnu.org/software/glpk/) and place the dynamic library somewhere that CFFI can find it, such as in the current working directory.
+Precompiled binaries are available for many platforms, otherwise it can be compiled from source.
+First, the [Julia GLPK wrapper](https://github.com/jump-dev/GLPK.jl/) provides [precompiled binaries for a variety of platforms](https://github.com/JuliaBinaryWrappers/GLPK_jll.jl/releases).
+Alternatively, your operating system's package manager may provide binaries for your platform.
+Additionally, there is a set of prebuild binaries [specifically for Windows](http://winglpk.sourceforge.net/).
+
+This library is available through Quicklisp and can be loaded as `(ql:quickload :linear-programming-glpk)`.
+It is also available through the Ultralisp distribution.
+Alternatively, the library can be installed manually.
+First, install [linear-programming](https://github.com/neil-lindquist/linear-programming), [CFFI](https://www.common-lisp.net/project/cffi/), and their dependencies.
+Next, download this repository somewhere ASDF can find them.
 Then, it can be loaded with `(asdf:load-system :linear-programming)`.
 
-Finally, download and compile [GLPK](https://www.gnu.org/software/glpk/) and place the dynamic library somewhere that CFFI can find it, such as in the current working directory.
-To check that it is working and that GLPK can be found, the tests can be run with `(asdf:test-system :linear-programming-glpk)`.
-
-Instead of compiling GLPK by hand, there may be precompiled binaries for your platform.
-First, the [Julia GLPK wrapper](https://github.com/jump-dev/GLPK.jl/) provides [precompiled binaries for a variety of platforms](https://github.com/JuliaBinaryWrappers/GLPK_jll.jl/releases).
-Additionally, there is a set of prebuild binaries [specifically for Windows](http://winglpk.sourceforge.net/).
-Finally, your operating system's package manager may provide binaries for your platform.
+The library's tests can be used to verify that the library is installed correctly and GLPK can be found.
+Evaluate `(asdf:test-system :linear-programming-glpk)` to test the system.
