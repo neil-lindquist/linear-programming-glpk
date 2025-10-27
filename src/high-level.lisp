@@ -44,6 +44,8 @@
                                  (backtracking-technique :best-local-bound bat-supplied-p)
                                  (preprocessing-technique :all-levels prepro-supplied-p)
                                  (cut-methods '() cutm-supplied-p)
+                                 (time-limit-in-msec nil)
+                                 (proxy-time-limit-in-msec nil)
                                  (message-level nil)
                                  &allow-other-keys)
   "Solves the given linear problem using the GLPK library"
@@ -136,7 +138,8 @@
                   (or brt-supplied-p
                       bat-supplied-p
                       prepro-supplied-p
-                      cutm-supplied-p))
+                      cutm-supplied-p
+                      proxy-time-limit-in-msec))
          (error "Unused solver paramaters"))
        (with-foreign-object (ctrl '(:struct simplex-control-parameters))
          (%init-smcp ctrl)
@@ -152,6 +155,13 @@
          (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
                   'ratio-test)
                ratio-test)
+         (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+                  'method)
+               method)
+         (when time-limit-in-msec
+           (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+                    'time-limit)
+                 time-limit-in-msec))
         ;; TODO: support more options
         (let ((result (%simplex glpk-ptr ctrl)))
            (unless (eq result :success)
@@ -170,7 +180,9 @@
                       brt-supplied-p
                       bat-supplied-p
                       prepro-supplied-p
-                      cutm-supplied-p))
+                      cutm-supplied-p
+                      time-limit-in-msec
+                      proxy-time-limit-in-msec))
          (error "Unused solver paramaters"))
        (with-foreign-object (ctrl '(:struct interior-point-control-parameters))
          (%init-iptcp ctrl)
@@ -235,6 +247,14 @@
                   ((:no-feasible-solution-exists :infeasible)
                    (error 'linear-programming:infeasible-problem-error))
                   (:unbounded (error 'linear-programming:unbounded-problem-error)))))
+         (when time-limit-in-msec
+           (setf (foreign-slot-value ctrl '(:struct integer-control-parameters)
+                    'time-limit)
+                 time-limit-in-msec))
+         (when proxy-time-limit-in-msec
+           (setf (foreign-slot-value ctrl '(:struct integer-control-parameters)
+                    'proxy-time-limit)
+                 proxy-time-limit-in-msec))
          ;; TODO: check if all variables are binary, to enable BINARIZE
          ;; TODO: support more options
          (let ((result (%intopt glpk-ptr ctrl)))
