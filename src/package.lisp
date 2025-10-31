@@ -2,4 +2,5 @@
 (defpackage :linear-programming-glpk
   (:use #:cl
         #:cffi)
-  (:export #:glpk-solver))
+  (:export #:glpk-solver
+           #:premature-exit-error))
