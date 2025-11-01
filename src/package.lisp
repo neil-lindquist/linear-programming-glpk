@@ -3,4 +3,7 @@
   (:use #:cl
         #:cffi)
   (:export #:glpk-solver
-           #:premature-exit-error))
+           #:exit-code
+           #:status
+           #:glpk-solver-error
+           #:premature-solution-error))

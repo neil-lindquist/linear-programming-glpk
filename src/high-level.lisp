@@ -32,28 +32,31 @@
 (defun glpk-float-type ()
   (type-of 0.0l0))
 
-(define-condition premature-exit-error (linear-programming:solver-error)
-  ((reason :initarg :reason :accessor reason))
+(define-condition glpk-solver-error (linear-programming:solver-error)
+  ((exit-code :initarg :exit-code :accessor exit-code)
+   (status :initarg :status :accessor status))
   (:report (lambda (err stream)
-             (format stream "Solver exited prematurely with state ~A"
-                     (reason err))))
-  (:documentation "Indicates that solver exited prematurely."))
+             (format stream "Solver failed with exit code ~A and status ~A"
+                     (exit-code err) (status err))))
+  (:documentation "Indicates that GLPK solver failed."))
 
-(defun check-exit-code (exit-code)
-  (case exit-code
-    (:success)
-    ((:objective-lower-limit
-      :objective-upper-limit
-      :iteration-limit
-      :time-limit)
-     (cerror "Return the current solution" 'premature-exit-error :reason exit-code))
-    (t (error "Solver failed with state ~A" exit-code))))
+(define-condition premature-solution-error (linear-programming:solver-error)
+  ((exit-code :initarg :exit-code :accessor exit-code))
+  (:report (lambda (err stream)
+             (format stream "Solver returned prematurely with exit code ~A"
+                     (exit-code err))))
+  (:documentation "Indicates that solver returned prematurely."))
 
-(defun check-status (status)
+(defun check-status (exit-code status)
   (case status
-    ((:no-feasible-solution-exists :infeasible)
+    (:optimal t)
+    (:no-feasible-solution-exists
      (error 'linear-programming:infeasible-problem-error))
-    (:unbounded (error 'linear-programming:unbounded-problem-error))))
+    (:unbounded (error 'linear-programming:unbounded-problem-error))
+    (:feasible
+     (cerror "Return the current solution" 'premature-solution-error
+             :exit-code exit-code))
+    (t (error 'glpk-solver-error :exit-code exit-code :status status))))
 
 (defun glpk-solver (problem &key solver-method
                                  (fp-tolerance 1024 fpto-supplied-p)
@@ -185,8 +188,8 @@
                     'time-limit)
                  time-limit-in-msec))
          ;; TODO: support more options
-         (check-exit-code (%simplex glpk-ptr ctrl))
-         (check-status (%get-status glpk-ptr))))
+         (check-status (%simplex glpk-ptr ctrl)
+                       (%get-status glpk-ptr))))
       (:interior-point
        (when (and solver-method
                   (or fpto-supplied-p
@@ -210,8 +213,8 @@
                   'ordering-algorithm)
                ordering-algorithm)
 
-         (check-exit-code (%interior glpk-ptr ctrl))
-         (check-status (%ipt-status glpk-ptr))))
+         (check-status (%interior glpk-ptr ctrl)
+                       (%ipt-status glpk-ptr))))
       (:integer
        (when (and solver-method
                   (or fpto-supplied-p
@@ -254,9 +257,8 @@
               (setf (foreign-slot-value ctrl '(:struct integer-control-parameters)
                        'presolve)
                :on)
-              (progn
-                (%simplex glpk-ptr (null-pointer))
-                (check-status (%get-status glpk-ptr))))
+              (check-status (%simplex glpk-ptr (null-pointer))
+                            (%get-status glpk-ptr)))
          (when time-limit-in-msec
            (setf (foreign-slot-value ctrl '(:struct integer-control-parameters)
                     'time-limit)
@@ -267,8 +269,8 @@
                  proxy-time-limit-in-msec))
          ;; TODO: check if all variables are binary, to enable BINARIZE
          ;; TODO: support more options
-         (check-exit-code (%intopt glpk-ptr ctrl))
-         (check-status (%mip-status glpk-ptr)))))
+         (check-status (%intopt glpk-ptr ctrl)
+                       (%mip-status glpk-ptr)))))
 
     ;; Copy solution to lisp arrays
     ;; GLPK problems can't move threads and lisp's GC gives no guarantee
