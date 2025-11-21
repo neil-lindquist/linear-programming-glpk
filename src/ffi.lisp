@@ -201,7 +201,7 @@ typedef struct
   (:objective-lower-limit #x6)
   (:objective-upper-limit #x7)
   (:iteration-limit #x8)
-  (:timie-limit #x9)
+  (:time-limit #x9)
   (:no-primal-feasible-sol #xA)
   (:no-dual-feasible-sol #xB)
   (:no-root-lp-optimum #xC)

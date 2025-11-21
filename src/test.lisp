@@ -53,7 +53,7 @@
                    (<= (+ x1 x2 x3)                     100)
                    (<= (+ (* 10 x1) (* 4 x2) (* 5 x3))  600)
                    (<= (+ (*  2 x1) (* 2 x2) (* 6 x3))  300)))
-         (solution (linear-programming:solve-problem problem :method :simplex))
+         (solution (linear-programming:solve-problem problem :method :primal))
          (eps 1d-10))
     (is (eq problem (linear-programming:solution-problem solution)))
     (is (<= (- 2200/3 eps) (linear-programming:solution-objective-value solution) (+ 2200/3 eps)))

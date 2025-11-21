@@ -32,6 +32,31 @@
 (defun glpk-float-type ()
   (type-of 0.0l0))
 
+(define-condition glpk-solver-error (linear-programming:solver-error)
+  ((exit-code :initarg :exit-code :accessor exit-code)
+   (status :initarg :status :accessor status))
+  (:report (lambda (err stream)
+             (format stream "Solver failed with exit code ~A and status ~A"
+                     (exit-code err) (status err))))
+  (:documentation "Indicates that GLPK solver failed."))
+
+(define-condition premature-solution-error (linear-programming:solver-error)
+  ((exit-code :initarg :exit-code :accessor exit-code))
+  (:report (lambda (err stream)
+             (format stream "Solver returned prematurely with exit code ~A"
+                     (exit-code err))))
+  (:documentation "Indicates that solver returned prematurely."))
+
+(defun check-status (exit-code status)
+  (case status
+    (:optimal t)
+    (:no-feasible-solution-exists
+     (error 'linear-programming:infeasible-problem-error))
+    (:unbounded (error 'linear-programming:unbounded-problem-error))
+    (:feasible
+     (cerror "Return the current solution" 'premature-solution-error
+             :exit-code exit-code))
+    (t (error 'glpk-solver-error :exit-code exit-code :status status))))
 
 (defun glpk-solver (problem &key solver-method
                                  (fp-tolerance 1024 fpto-supplied-p)
@@ -44,6 +69,8 @@
                                  (backtracking-technique :best-local-bound bat-supplied-p)
                                  (preprocessing-technique :all-levels prepro-supplied-p)
                                  (cut-methods '() cutm-supplied-p)
+                                 (time-limit-in-msec nil)
+                                 (proxy-time-limit-in-msec nil)
                                  (message-level nil)
                                  &allow-other-keys)
   "Solves the given linear problem using the GLPK library"
@@ -136,7 +163,8 @@
                   (or brt-supplied-p
                       bat-supplied-p
                       prepro-supplied-p
-                      cutm-supplied-p))
+                      cutm-supplied-p
+                      proxy-time-limit-in-msec))
          (error "Unused solver paramaters"))
        (with-foreign-object (ctrl '(:struct simplex-control-parameters))
          (%init-smcp ctrl)
@@ -152,14 +180,16 @@
          (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
                   'ratio-test)
                ratio-test)
-        ;; TODO: support more options
-        (let ((result (%simplex glpk-ptr ctrl)))
-           (unless (eq result :success)
-              (error "Solver failed with state ~A" result)))
-        (case (%get-status glpk-ptr)
-           ((:no-feasible-solution-exists :infeasible)
-            (error 'infeasible-problem-error))
-           (:unbounded (error 'unbounded-problem-error)))))
+         (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+                  'method)
+               method)
+         (when time-limit-in-msec
+           (setf (foreign-slot-value ctrl '(:struct simplex-control-parameters)
+                    'time-limit)
+                 time-limit-in-msec))
+         ;; TODO: support more options
+         (check-status (%simplex glpk-ptr ctrl)
+                       (%get-status glpk-ptr))))
       (:interior-point
        (when (and solver-method
                   (or fpto-supplied-p
@@ -170,7 +200,9 @@
                       brt-supplied-p
                       bat-supplied-p
                       prepro-supplied-p
-                      cutm-supplied-p))
+                      cutm-supplied-p
+                      time-limit-in-msec
+                      proxy-time-limit-in-msec))
          (error "Unused solver paramaters"))
        (with-foreign-object (ctrl '(:struct interior-point-control-parameters))
          (%init-iptcp ctrl)
@@ -180,13 +212,9 @@
          (setf (foreign-slot-value ctrl '(:struct interior-point-control-parameters)
                   'ordering-algorithm)
                ordering-algorithm)
-         (let ((result (%interior glpk-ptr ctrl)))
-            (unless (eq result :success)
-               (error "Solver failed with state ~A" result)))
-         (case (%ipt-status glpk-ptr)
-            ((:no-feasible-solution-exists :infeasible)
-             (error 'infeasible-problem-error))
-            (:unbounded (error 'unbounded-problem-error)))))
+
+         (check-status (%interior glpk-ptr ctrl)
+                       (%ipt-status glpk-ptr))))
       (:integer
        (when (and solver-method
                   (or fpto-supplied-p
@@ -229,21 +257,20 @@
               (setf (foreign-slot-value ctrl '(:struct integer-control-parameters)
                        'presolve)
                :on)
-              (progn
-                 (%simplex glpk-ptr (null-pointer))
-                 (case (%get-status glpk-ptr)
-                  ((:no-feasible-solution-exists :infeasible)
-                   (error 'linear-programming:infeasible-problem-error))
-                  (:unbounded (error 'linear-programming:unbounded-problem-error)))))
+              (check-status (%simplex glpk-ptr (null-pointer))
+                            (%get-status glpk-ptr)))
+         (when time-limit-in-msec
+           (setf (foreign-slot-value ctrl '(:struct integer-control-parameters)
+                    'time-limit)
+                 time-limit-in-msec))
+         (when proxy-time-limit-in-msec
+           (setf (foreign-slot-value ctrl '(:struct integer-control-parameters)
+                    'proxy-time-limit)
+                 proxy-time-limit-in-msec))
          ;; TODO: check if all variables are binary, to enable BINARIZE
          ;; TODO: support more options
-         (let ((result (%intopt glpk-ptr ctrl)))
-            (unless (eq result :success)
-               (error "Solver failed with state ~A" result)))
-         (case (%mip-status glpk-ptr)
-            ((:infeasible :no-feasible-solution-exists)
-             (error 'infeasible-problem-error))
-            (:unbounded (error 'unbounded-problem-error))))))
+         (check-status (%intopt glpk-ptr ctrl)
+                       (%mip-status glpk-ptr)))))
 
     ;; Copy solution to lisp arrays
     ;; GLPK problems can't move threads and lisp's GC gives no guarantee
