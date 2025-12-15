@@ -5,6 +5,7 @@
 
 (define-foreign-library libglpk
   (:windows (:or "glpk" "glpk_4_65"))
+  (:darwin (:or "libglpk" "libglpk.dylib" "libglpk.40.dylib"))
   (:unix (:or "libglpk" "libglpk.so.40"))
   (t (:default "libglpk")))
 
