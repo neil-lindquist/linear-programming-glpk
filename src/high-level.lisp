@@ -24,7 +24,7 @@
     (error "GLPK does not provide reduced costs for mixed-integer problems"))
   (aref (glpk-solution-var-reduced-costs solution) (gethash variable (glpk-solution-var-index solution))))
 
-(declaim (inline as-glpk-float glpk-float))
+(declaim (inline as-glpk-float glpk-float-type))
 (defun as-glpk-float (num)
   "Converts a number to a type that CFFI can convert to a C double"
   (float num 0.0l0))
